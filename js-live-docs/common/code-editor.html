@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <style>
+            html {
+                padding: 0;
+                margin: 0;
+                height: 100%;
+            }
+            body {
+                padding: 0;
+                margin: 0;
+                height: 100%;
+                display: flex;
+                flex-flow: column nowrap;
+            }
+            textarea.editor {
+                padding: 0;
+                margin: 0;
+                flex-grow: 1;
+                resize: none;
+            }
+        </style>
+        <script type="text/javascript">
+            function run(data) {
+                // Create a var for returning the result
+                var result = null
+                // This has access to data, and should write to result
+                eval(document.getElementById('editor').value)
+                // Return result
+                return result
+            }
+            window.addEventListener('message', message => {
+                // Parse the payload of the message
+                let payload = JSON.parse(message.data)
+
+                // Run the code
+                let result = run(payload.data)
+
+                // Post back the result to the parent
+                window.parent.postMessage(JSON.stringify({
+                    source: payload.source,
+                    result: result,
+                }), '*')
+            })
+        </script>
+    </head>
+    <body>
+        <textarea id="editor" class="editor" name="editor"></textarea>
+    </body>
+</html>

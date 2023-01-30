@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src="external/d3.v7.min.js"></script>
+        <script src="external/plotly-2.18.0.min.js"></script>
+
+        <script src="common/utils.js"></script>
+        <link rel="stylesheet" href="common/styles.css">
+        
+        <script src="random-walks.js"></script>
+        <title>Random walks</title>
+    </head>
+
+    <body>
+        <div class="contents">
+            <!-- ------------------------------------ Title and setup ------------------------------------ -->
+            <h1>Random walks</h1>
+            <script type="text/javascript">
+                let data = {
+                    t: [], x0: [], x1: []
+                }
+            </script>
+    
+            <!-- ------------------------------------ Data loading ------------------------------------ -->
+            <h2>Data loading</h2>
+            <p>
+                First, let's load the CSV file with the data.
+            </p>
+            <input type="file" id="csv-upload" accept=".csv"/>
+            <p id="csv-upload-results"></p>
+            <script type="text/javascript">
+                // Add a CSV load callback to the csv-upload element above
+                setupCSVLoader(
+                    'csv-upload',
+                    (rawData) => {
+                        // When a CSV is loaded, use its columns to populate the data structure
+                        data.t = rawData.map(x => parseFloat(x.t))
+                        data.x0 = rawData.map(x => parseFloat(x.x0))
+                        data.x1 = rawData.map(x => parseFloat(x.x1))
+                        forId('csv-upload-results').innerHTML = `Loaded ${rawData.length} rows from CSV.`
+                    }
+                )
+            </script>
+
+            <!-- ------------------------------------ Basic viz ------------------------------------ -->
+            <h2>Data visualization</h2>
+            <p>
+                Once the data is loaded, click here to display it.                
+            </p>
+            <input type="button" id="basic-plot-display" value="Display"/>
+            <div id="basic-plot"></div>
+            <script type="text/javascript">
+                addGenericScatterPlot('basic-plot', 'lines', ['X0', 'X1'])
+                buttonAction('basic-plot-display', () => {
+                    updatePlotData('basic-plot', [data.t, data.t], [data.x0, data.x1])
+                })
+            </script>
+
+            <!-- ------------------------------------ Advanced viz ------------------------------------ -->
+            <h2>Smoothing</h2>
+            <p>
+                You can apply smoothing by moving the slider below, once the data is loaded.
+                The smoothing is computed as
+<pre>
+x[i] -> 0.25 * x[i-1] + 0.5 * x[i] + 0.25 * x[i+1]
+</pre>
+                and applied N times, as defined by the slider's value.
+                This approximates Gaussian smoothing for large-ish N.
+            </p>
+            <div id="smoothed-plot"></div>
+            <script type="text/javascript">
+                addLinePlot('smoothed-plot', ['X0-s', 'X1-s'])
+                setPlotSliders('smoothed-plot', {'Smoothing': [0, 1, 2, 5, 10, 20, 50, 100, 200, 500]})
+                sliderAction('smoothed-plot', event => {
+                    let smoothingFactor = parseInt(event.step.value)
+                    updatePlotData(
+                        'smoothed-plot',
+                        [data.t, data.t],
+                        [smoothing(data.x0, smoothingFactor), smoothing(data.x1, smoothingFactor)],
+                    )
+                })
+            </script>
+
+            <!-- ------------------------------------ Coding ------------------------------------ -->
+            <h2>Playing with the data</h2>
+            <p>
+                We can also do direct manipulations of the data.
+                You can type JS code in the editor below.
+                The loaded data will be available in the
+                <code>data.t</code>, <code>data.x0</code> and <code>data.x1</code>
+                variables. The output must be a <code>result</code> object with two
+                fields <code>x</code> and <code>y</code>.
+            </p>
+            <p>
+                Try the following
+<pre>
+result = {
+    x: data.x0,
+    y: data.x1,
+}
+</pre>
+            to see a correlation plot between the two random walks.
+            </p>
+            <div class="code-editor">
+                <iframe
+                    sandbox="allow-scripts"
+                    id="code-editor"
+                    src="./common/code-editor.html"
+                    scrolling="no"
+                    frameborder="0"></iframe>
+                <input type="button" id="code-run" value="Run code"/>
+            </div>
+            <div id="code-editor-plot"></div>
+            <p>
+                They do not seem positively correlated, however, maybe they share
+                some structure. We can look at whether the steps are correlated by
+                computing the discrete derivative of each random walk.
+                For example try again with
+<pre>
+function diff(x) {
+    let indices = x.map((_, index) => index).slice(1)
+    return indices.map(i => x[i] - x[i-1])
+}
+      
+result = {
+    'x': diff(data.x0),
+    'y': diff(data.x1),
+}
+</pre>
+            </p>
+            <script type="text/javascript">
+                addScatterPlot('code-editor-plot', ['Data'])
+                buttonAction('code-run', () => {
+                    // First clean the existing plot
+                    updatePlotData('code-editor-plot', [[]], [[]])
+                    // The run the code in the editor,
+                    // and use the results to populate the plot
+                    runCodeEditor('code-editor', data, results => {
+                        updatePlotData('code-editor-plot', [results.x], [results.y])
+                    })
+                })
+            </script>
+        </div>
+    </body>
+</html>
